@@ -112,6 +112,10 @@ void GPRSbeeClass::initNdogoSIM800(Stream &stream, int pwrkeyPin, int vbatPin, i
 
 void GPRSbeeClass::initProlog(Stream &stream)
 {
+  if (_bufSize == 0) {
+    _bufSize = SIM900_DEFAULT_BUFFER_SIZE;
+  }
+  _SIM900_buffer = (char *)malloc(_bufSize);
   _myStream = &stream;
   _diagStream = 0;
   _statusPin = -1;
@@ -328,12 +332,17 @@ void GPRSbeeClass::flushInput()
  */
 int GPRSbeeClass::readLine(uint32_t ts_max)
 {
+  if (_SIM900_buffer == NULL) {
+    return -1;
+  }
+
   uint32_t ts_waitLF = 0;
   bool seenCR = false;
   int c;
+  int bufcnt;
 
   //diagPrintLn(F("readLine"));
-  _SIM900_bufcnt = 0;
+  bufcnt = 0;
   while (!isTimedOut(ts_max)) {
     wdt_reset();
     if (seenCR) {
@@ -359,8 +368,8 @@ int GPRSbeeClass::readLine(uint32_t ts_max)
       goto ok;
     } else {
       // Any other character is stored in the line buffer
-      if (_SIM900_bufcnt < SIM900_BUFLEN) {
-        _SIM900_buffer[_SIM900_bufcnt++] = c;
+      if (bufcnt < (_bufSize + 1)) {    // Leave room for the terminating NUL
+        _SIM900_buffer[bufcnt++] = c;
       }
     }
   }
@@ -369,9 +378,9 @@ int GPRSbeeClass::readLine(uint32_t ts_max)
   return -1;            // This indicates: timed out
 
 ok:
-  _SIM900_buffer[_SIM900_bufcnt] = 0;     // Terminate with NUL byte
+  _SIM900_buffer[bufcnt] = 0;     // Terminate with NUL byte
   //diagPrint(F(" ")); diagPrintLn(_SIM900_buffer);
-  return _SIM900_bufcnt;
+  return bufcnt;
 
 }
 
@@ -1442,12 +1451,13 @@ ending:
   return retval;
 }
 
-/*
- * The middle part of the whole HTTP POST
+/*!
+ * \brief The middle part of the whole HTTP POST
  *
- * HTTPPARA with the URL
- * HTTPDATA
- * HTTPACTION
+ * This function does:
+ *  - HTTPPARA with the URL
+ *  - HTTPDATA
+ *  - HTTPACTION(1)
  */
 bool GPRSbeeClass::doHTTPPOSTmiddle(const char *url, const char *buffer, size_t len)
 {
@@ -1496,13 +1506,12 @@ ending:
   return retval;
 }
 
-/*
- * The middle part of the whole HTTP POST, with a READ
+/*!
+ * \brief The middle part of the whole HTTP POST, with a READ
  *
- * HTTPPARA with the URL
- * HTTPDATA
- * HTTPACTION
- * HTTPREAD
+ * This function does:
+ *  - doHTTPPOSTmiddle() ...
+ *  - HTTPREAD
  */
 bool GPRSbeeClass::doHTTPPOSTmiddleWithReply(const char *url, const char *postdata, size_t pdlen, char *buffer, size_t len)
 {
@@ -1524,12 +1533,13 @@ ending:
     return retval;
 }
 
-/*
- * The middle part of the whole HTTP GET
+/*!
+ * \brief The middle part of the whole HTTP GET
  *
- * HTTPPARA with the URL
- * HTTPACTION
- * HTTPREAD
+ * This function does:
+ *  - HTTPPARA with the URL
+ *  - HTTPACTION(0)
+ *  - HTTPREAD
  */
 bool GPRSbeeClass::doHTTPGETmiddle(const char *url, char *buffer, size_t len)
 {
