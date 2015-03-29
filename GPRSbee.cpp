@@ -123,6 +123,7 @@ void GPRSbeeClass::initProlog(Stream &stream)
   _echoOff = false;
   _onoffMethod = onoff_toggle;
   _skipCGATT = false;
+  _addREDIR = false;
 }
 
 bool GPRSbeeClass::on()
@@ -1521,12 +1522,14 @@ ending:
     return retval;
 }
 
-/*
- * The middle part of the whole HTTP GET
+/*!
+ * \brief The middle part of a complete HTTP GET
  *
- * HTTPPARA with the URL
- * HTTPACTION
- * HTTPREAD
+ * This function does:
+ *  - HTTPPARA with the URL
+ *  - optionally set the REDIR parameter in the SIM
+ *  - HTTPACTION
+ *  - HTTPREAD
  */
 bool GPRSbeeClass::doHTTPGETmiddle(const char *url, char *buffer, size_t len)
 {
@@ -1540,6 +1543,12 @@ bool GPRSbeeClass::doHTTPGETmiddle(const char *url, char *buffer, size_t len)
   sendCommandEpilog();
   if (!waitForOK()) {
     goto ending;
+  }
+
+  if (_addREDIR) {
+    if (!sendCommandWaitForOK_P(PSTR("AT+HTTPPARA=\"REDIR\",1"))) {
+      goto ending;
+    }
   }
 
   if (!doHTTPACTION(0)) {

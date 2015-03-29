@@ -87,6 +87,7 @@ public:
   void setDiag(Stream *stream) { _diagStream = stream; }
 
   void setSkipCGATT(bool x=true)        { _skipCGATT = x; }
+  void setAddREDIR(bool x=true)         { _addREDIR = x; }
 
   void setMinSignalQuality(int q) { _minSignalQuality = q; }
 
@@ -233,6 +234,7 @@ private:
   bool _echoOff;
   enum onoffKind _onoffMethod;
   bool _skipCGATT;
+  bool _addREDIR;               //!< send AT+HTTPPARA="REDIR",1 as part of the HTTP GET
 };
 
 extern GPRSbeeClass gprsbee;
